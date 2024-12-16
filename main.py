@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import traceback
 
 from qfluentwidgets import FluentTranslator
@@ -77,8 +78,8 @@ def init_window():
     app.installTranslator(CrashTranslator)
 
     GlobalsVal.main_window = MainWindow()
-
     GlobalsVal.main_window.show()
+
     app.exec_()
 
 
