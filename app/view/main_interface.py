@@ -2,11 +2,11 @@ import json
 import os
 import re
 
-from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtCore import pyqtSignal, Qt, QSize
 from PyQt5.QtGui import QColor, QIcon
-from PyQt5.QtWidgets import QWidget, QHBoxLayout
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QApplication
 from qfluentwidgets import Theme, qconfig, NavigationItemPosition, FluentWindow, SubtitleLabel, setFont, InfoBar, \
-    InfoBarPosition
+    InfoBarPosition, SplashScreen
 from qfluentwidgets import FluentIcon as FIF
 
 from app.config import cfg, base_path, config_path
@@ -39,24 +39,26 @@ class MainWindow(FluentWindow):
     def __init__(self):
         super().__init__()
 
+        self.initWindow()
+
         self.file_list = GlobalsVal.ddnet_folder
 
         # 加载配置文件
         self.load_config_files()
 
         # 初始化子界面
-        self.homeInterface = HomeInterface()
-        self.PlayerPointInterface = PlayerPointInterface()
-        self.CFGInterface = CFGInterface()
-        self.ResourceInterface = ResourceInterface()
-        self.ResourceDownloadInterface = ResourceDownloadInterface()
-        self.ServerListMirrorInterface = ServerListInterface()
-        self.ServerListPreviewInterface = None
-        self.settingInterface = SettingInterface(self.themeChane)
+        self.homeInterface = HomeInterface(self)
+        self.PlayerPointInterface = PlayerPointInterface(self)
+        self.CFGInterface = CFGInterface(self)
+        self.ResourceInterface = ResourceInterface(self)
+        self.ResourceDownloadInterface = ResourceDownloadInterface(self)
+        self.ServerListMirrorInterface = ServerListInterface(self)
+        # self.ServerListPreviewInterface = None
+        self.settingInterface = SettingInterface(self.themeChane, self)
 
-        self.initWindow()
         self.initNavigation()
         self.themeChane.connect(self.__theme_change)
+        self.splashScreen.finish()
 
 
     def load_config_files(self):
@@ -154,6 +156,18 @@ class MainWindow(FluentWindow):
         self.setWindowIcon(QIcon(base_path + f'/resource/{theme.value.lower()}/logo.png'))
         self.setWindowTitle('DDNetToolBox')
         self.setMicaEffectEnabled(False)  # 关闭win11的云母特效
+
+        # 显示加载窗口
+        self.splashScreen = SplashScreen(QIcon(base_path + f'/resource/logo.ico'), self)
+        self.splashScreen.setIconSize(QSize(106, 106))
+        self.splashScreen.raise_()
+
+        # 居中显示
+        desktop = QApplication.desktop().availableGeometry()
+        w, h = desktop.width(), desktop.height()
+        self.move(w//2 - self.width()//2, h//2 - self.height()//2)
+        self.show()
+        QApplication.processEvents()
 
     def __theme_change(self, theme: Theme):
         theme = qconfig.theme if theme == Theme.AUTO else theme
