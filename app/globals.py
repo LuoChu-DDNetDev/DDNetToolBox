@@ -9,3 +9,4 @@ class GlobalsVal:
     ddnet_folder = cfg.get(cfg.DDNetFolder)
     ddnet_folder_status = False
     main_window = None
+    teedata_build_id = None

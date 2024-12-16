@@ -5,7 +5,10 @@ from PyQt5.QtGui import QImage, QPixmap
 
 
 def crop_and_generate_image(img):
-    """来自DDNetDiscordBot"""
+    """
+    来自DDNetDiscordBot
+    https://github.com/ddnet/ddnet-discordbot/blob/master/cogs/skindb.py#L115
+    """
     image = img
 
     image_body_shadow = image.crop((96, 0, 192, 96))
@@ -101,7 +104,10 @@ def draw_tee(file: str) -> QImage:
         canvas.paste(image, (0, 0))
         image = canvas
 
-    processed_images = crop_and_generate_image(image)
+    try:
+        processed_images = crop_and_generate_image(image)
+    except:
+        return QImage()
 
     final_image = Image.new('RGBA', (96, 96), )
     final_image.paste(processed_images['default'], (0, 0))

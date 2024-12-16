@@ -1,17 +1,17 @@
 import datetime
 import requests
-from PyQt5.QtGui import QFont, QPainter, QColor, QPen
 
 from app.globals import GlobalsVal
 from app.config import cfg, base_path
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QRect, QSize
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QHBoxLayout, QSpacerItem, QSizePolicy, QLabel, \
-    QStackedWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QFrame, QToolTip, QTableWidget
+    QStackedWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QFrame, QTableWidget
 from qfluentwidgets import ImageLabel, CardWidget, SubtitleLabel, BodyLabel, HeaderCardWidget, InfoBar, InfoBarPosition, \
-    CaptionLabel, FlowLayout, SingleDirectionScrollArea, ToolTipFilter, ToolTipPosition, Pivot, TableWidget, SmoothMode, \
+    CaptionLabel, SingleDirectionScrollArea, ToolTipFilter, ToolTipPosition, Pivot, TableWidget, SmoothMode, \
     ComboBox, StrongBodyLabel, SearchLineEdit
 
 from app.utils.network import ImageLoader
+from app.utils.player_name import get_player_name, get_dummy_name
 
 
 class TEEDataLoader(QThread):
@@ -438,8 +438,8 @@ class HomeInterface(QWidget):
 
         # Add Layout&widget
         self.vBoxLayout.addLayout(self.hBoxLayout, Qt.AlignTop)
-        self.TEECARD(GlobalsVal.ddnet_setting_config.get("player_name", "nameless tee"),
-                     GlobalsVal.ddnet_setting_config.get("dummy_name", "[D] nameless te"))
+        self.TEECARD(get_player_name(),
+                     get_dummy_name())
         self.vBoxLayout.addWidget(self.teeinfolist, Qt.AlignCenter)
 
         if cfg.get(cfg.DDNetCheckUpdate):

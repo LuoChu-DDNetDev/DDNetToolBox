@@ -36,3 +36,19 @@ class JsonLoader(QThread):
             response = {}
 
         self.finished.emit(response)
+
+
+class HTMLoader(QThread):
+    finished = pyqtSignal(str)
+
+    def __init__(self, url):
+        super().__init__()
+        self.url = url
+
+    def run(self):
+        try:
+            response = requests.get(url=self.url).text
+        except:
+            response = ''
+
+        self.finished.emit(response)

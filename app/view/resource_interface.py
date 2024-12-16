@@ -1,20 +1,19 @@
 import os
 import shutil
-import threading
 from functools import partial
 
-from PyQt5.QtCore import Qt, pyqtSignal, QThread, QTimer
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QFontMetrics, QPainter, QBrush, QPainterPath
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QStackedWidget, QLabel, QFileDialog, QPushButton, QHBoxLayout
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QStackedWidget, QLabel, QFileDialog, QHBoxLayout
 from qfluentwidgets import CommandBar, Action, FluentIcon, InfoBar, InfoBarPosition, Pivot, TitleLabel, CardWidget, \
     ImageLabel, CaptionLabel, FlowLayout, SingleDirectionScrollArea, MessageBoxBase, SubtitleLabel, MessageBox, \
-    RadioButton, TogglePushButton, ToolTipFilter, ToolTipPosition, PrimaryPushButton, setFont
+    TogglePushButton, ToolTipFilter, ToolTipPosition, setFont
 
 from app.config import cfg, config_path
 from app.globals import GlobalsVal
 from app.utils import is_image
 from app.utils.draw_tee import draw_tee
-
+# from app.utils.image_alpha_check import has_alpha_channel
 
 select_list = {
     "skins": {},
@@ -175,6 +174,7 @@ class ResourceCard(CardWidget):
 
 class ResourceList(SingleDirectionScrollArea):
     refresh_resource = pyqtSignal()
+    file_list = []
 
     def __init__(self, list_type, parent=None):
         super().__init__(parent)
@@ -184,11 +184,11 @@ class ResourceList(SingleDirectionScrollArea):
             os.mkdir(f"{config_path}/app/ddnet_assets/cursor")
 
         if self.list_type == "skins":
-            self.file_path = f"{GlobalsVal.ddnet_folder}/{self.list_type}"
+            self.file_path = [f"{GlobalsVal.ddnet_folder}/{self.list_type}", f"{GlobalsVal.ddnet_folder}/downloadedskins"]
         elif self.list_type == "cursor":
-            self.file_path = f"{config_path}/app/ddnet_assets/cursor"
+            self.file_path = [f"{config_path}/app/ddnet_assets/cursor"]
         else:
-            self.file_path = f"{GlobalsVal.ddnet_folder}/assets/{self.list_type}"
+            self.file_path = [f"{GlobalsVal.ddnet_folder}/assets/{self.list_type}"]
 
         self.containerWidget = QWidget()
         self.containerWidget.setStyleSheet("background: transparent;")
@@ -199,10 +199,9 @@ class ResourceList(SingleDirectionScrollArea):
         self.enableTransparentBackground()
         self.setWidget(self.containerWidget)
 
-        if os.path.exists(self.file_path):
-            self.file_list = os.listdir(self.file_path)
-        else:
-            self.file_list = []
+        for i in self.file_path:
+            if os.path.exists(i):
+                self.file_list = self.file_list + [os.path.join(i, file_name) for file_name in os.listdir(i)]
 
         self.batch_size = 1
         self.current_index = 0
@@ -214,9 +213,15 @@ class ResourceList(SingleDirectionScrollArea):
     def load_next_batch(self):
         end_index = min(self.current_index + self.batch_size, len(self.file_list))
         for i in range(self.current_index, end_index):
-            resource_path = f"{self.file_path}/{self.file_list[i]}"
-            if not is_image(resource_path):
-                return
+            resource_path = self.file_list[i]
+            file_extension = os.path.splitext(resource_path)[1].lower()
+
+            if not is_image(resource_path) or file_extension != '.png': # 非PNG格式或图片文件不渲染
+                continue
+
+            # if not is_image(resource_path) or has_alpha_channel(resource_path):
+            #     continue
+
             self.fBoxLayout.addWidget(ResourceCard(resource_path, self.list_type))
         self.current_index = end_index
 
@@ -230,7 +235,11 @@ class ResourceList(SingleDirectionScrollArea):
                 self.fBoxLayout.removeWidget(widget)
                 widget.deleteLater()
 
-        self.file_list = os.listdir(self.file_path)
+        self.file_list = []
+        for i in self.file_path:
+            if os.path.exists(i):
+                self.file_list = self.file_list + [os.path.join(i, file_name) for file_name in os.listdir(i)]
+
         self.current_index = 0
 
         QTimer.singleShot(0, self.load_next_batch)

@@ -30,6 +30,7 @@
 ### 特别感谢以下项目和贡献者：
 
 - [PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets) - 基于 C++ Qt/PyQt/PySide 的流畅设计小部件库。
+- [ddnet-discordbot](https://github.com/ddnet/ddnet-discordbot) - DDNetDiscordBOT，本项目部分源码取自该项目
 - [REALYNUnU](https://github.com/REALYNUnU) - 为本项目制作了logo
 
 ### 软件截图
