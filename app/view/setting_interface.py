@@ -3,11 +3,11 @@ import platform
 import subprocess
 
 from PyQt5.QtCore import Qt, pyqtSignal, QUrl
-from PyQt5.QtGui import QIcon, QDesktopServices
+from PyQt5.QtGui import QDesktopServices
 from qfluentwidgets import (OptionsSettingCard, ScrollArea, ExpandLayout, FluentIcon, SettingCardGroup, setTheme,
                             InfoBar, isDarkTheme, Theme, PushSettingCard, SwitchSettingCard, PrimaryPushSettingCard,
-                            CaptionLabel, qconfig, CustomColorSettingCard, setThemeColor, InfoBarPosition,
-                            ComboBoxSettingCard, PushButton, PrimaryPushButton, InfoBarIcon)
+                            CustomColorSettingCard, setThemeColor, InfoBarPosition,
+                            ComboBoxSettingCard, PushButton, InfoBarIcon)
 from PyQt5.QtWidgets import QWidget, QFileDialog, QPushButton, QHBoxLayout
 from app.config import cfg, base_path, config_path
 from app.globals import GlobalsVal
