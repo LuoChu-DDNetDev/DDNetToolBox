@@ -22,9 +22,12 @@ English | <a href="README_zh.md">简体中文</a>
 
 > If you have any suggestions or problems during use, please raise an Issue
 
+### Tips:
+- If your `browser` or `antivirus software` flags the file as a virus, but you downloaded the executable from the `GitHub release` page, you can safely allow it. All executables in the `release` section are built and uploaded via `GitHub Actions`, ensuring they are secure and trustworthy.
+
 ### Get Started：
 
-- Download the version of the corresponding platform from Releases, and double-click to open it after downloading.
+- Download the version of the corresponding platform from Release, and double-click to open it after downloading.
 
 ### Special thanks to the following projects and contributors：
 
