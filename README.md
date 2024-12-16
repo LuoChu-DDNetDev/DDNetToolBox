@@ -29,6 +29,7 @@ English | <a href="README_zh.md">简体中文</a>
 ### Special thanks to the following projects and contributors：
 
 - [PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets) - A fluent design widgets library based on C++ Qt/PyQt/PySide.
+- [ddnet-discordbot](https://github.com/ddnet/ddnet-discordbot) - DDNetDiscordBOT，Part of the source code of this project is taken from this project.
 - [REALYNUnU](https://github.com/REALYNUnU) - Created a logo for this project
 
 ### Software Screenshots
