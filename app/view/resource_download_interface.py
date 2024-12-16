@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 from functools import partial
 
@@ -7,12 +8,14 @@ from PyQt5.QtGui import QFontMetrics, QPainter, QBrush, QPainterPath, QPixmap
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QStackedWidget, QLabel, QFileDialog, QHBoxLayout
 from qfluentwidgets import CommandBar, Action, FluentIcon, InfoBar, InfoBarPosition, Pivot, TitleLabel, CardWidget, \
     ImageLabel, CaptionLabel, FlowLayout, SingleDirectionScrollArea, MessageBoxBase, SubtitleLabel, MessageBox, \
-    SearchLineEdit, TogglePushButton, ToolTipFilter, ToolTipPosition, setFont
+    SearchLineEdit, TogglePushButton, ToolTipFilter, ToolTipPosition, setFont, IndeterminateProgressRing, InfoBadge, \
+    InfoBadgePosition
+from win32comext.mapi.mapitags import PR_DELTAX
 
 from app.config import cfg, base_path, config_path
 from app.globals import GlobalsVal
 from app.utils.draw_tee import draw_tee
-from app.utils.network import JsonLoader, ImageLoader
+from app.utils.network import JsonLoader, ImageLoader, HTMLoader
 
 select_list = {
     "skins": {},
@@ -23,7 +26,6 @@ select_list = {
     "entities": {}
 }
 button_select = None
-tee_data_url = "https://teedata.net/_next/data/4C1xLtC88u-Pu26aBBoiA"
 
 
 class ResourceCard(CardWidget):
@@ -35,19 +37,15 @@ class ResourceCard(CardWidget):
 
         self.card_type = card_type
         self.data = data
+        self.file = data['name']
         self.setFixedSize(135, 120)
 
         if self.card_type == "skins":
             self.image_load = ImageLoader(f"https://teedata.net/api/skin/render/name/{data['name']}?emotion=default_eye")
-            self.iconWidget = ImageLabel(base_path + '/resource/logo.png', self)
-            self.iconWidget.scaledToHeight(110)
+            self.spinner = IndeterminateProgressRing()
         else:
             self.image_load = ImageLoader(f"https://teedata.net/databasev2{data['file_path']}")
-            self.iconWidget = ImageLabel(base_path + '/resource/logo.png', self)
-            if self.card_type == "entities":
-                self.iconWidget.scaledToHeight(100)
-            else:
-                self.iconWidget.scaledToHeight(60)
+            self.spinner = IndeterminateProgressRing()
 
         self.image_load.finished.connect(self.__on_image_load)
         self.image_load.start()
@@ -59,51 +57,27 @@ class ResourceCard(CardWidget):
         self.label.installEventFilter(ToolTipFilter(self.label, showDelay=300, position=ToolTipPosition.BOTTOM))
 
         self.vBoxLayout = QVBoxLayout(self)
-        self.vBoxLayout.addWidget(self.iconWidget, 0, Qt.AlignCenter)
-
-        if self.card_type == "cursor":
-            self.button = TogglePushButton("启用", self)
-            self.button.clicked.connect(self.__button_clicked)
-            self.vBoxLayout.addWidget(self.button, 0, Qt.AlignCenter)
-
-            self.select_cursor = cfg.get(cfg.DDNetAssetsCursor)
-            if self.select_cursor is not None:
-                if file == self.select_cursor:
-                    self.button.setText('禁用')
-                    button_select = self.button
+        self.vBoxLayout.addWidget(self.spinner, 0, Qt.AlignCenter)
 
         self.vBoxLayout.addWidget(self.label, 0, Qt.AlignCenter)
 
         self.clicked.connect(self.__on_clicked)
 
     def __on_image_load(self, pixmap: QPixmap):
+        self.iconWidget = ImageLabel(pixmap)
+
+        self.vBoxLayout.replaceWidget(self.spinner, self.iconWidget)
+        self.spinner.deleteLater()
+
         if self.card_type == "skins":
-            self.iconWidget.setPixmap(pixmap)
             self.iconWidget.scaledToHeight(110)
         else:
-            self.iconWidget.setPixmap(pixmap)
             if self.card_type == "entities":
                 self.iconWidget.scaledToHeight(100)
             else:
                 self.iconWidget.scaledToHeight(60)
 
-    def __button_clicked(self, checked):  # gui_cursor.png
-        global button_select
-        if button_select is not None and button_select != self.button:
-            button_select.setChecked(False)
-            button_select.setText('启用')
-
-        ddnet_folder = GlobalsVal.ddnet_folder
-
-        if checked:
-            self.button.setText('禁用')
-            button_select = self.button
-            cfg.set(cfg.DDNetCheckUpdate, self.file)
-
-            shutil.copy(self.file, f"{ddnet_folder}/gui_cursor.png")
-        else:
-            self.button.setText('启用')
-            os.remove(f"{ddnet_folder}/gui_cursor.png")
+        self.iconWidget.stackUnder(self.label)
 
     def __on_clicked(self):
         self.set_selected(not self.selected)
@@ -141,20 +115,20 @@ class ResourceCard(CardWidget):
 
 class ResourceList(SingleDirectionScrollArea):
     refresh_resource = pyqtSignal()
-    data_ready = pyqtSignal(list)
+    data_ready = pyqtSignal()
     batch_size = 1
     current_index = 0
 
     def __init__(self, list_type, parent=None):
         super().__init__(parent)
         self.list_type = list_type
-        if self.list_type == "cursor" and not os.path.exists(f"{config_path}/app/ddnet_assets/cursor"):
+        if self.list_type == "cursors" and not os.path.exists(f"{config_path}/app/ddnet_assets/cursor"):
             os.mkdir(f"{config_path}/app/ddnet_assets")
             os.mkdir(f"{config_path}/app/ddnet_assets/cursor")
 
         if self.list_type == "skins":
             self.file_path = f"{GlobalsVal.ddnet_folder}/{self.list_type}"
-        elif self.list_type == "cursor":
+        elif self.list_type == "cursors":
             self.file_path = f"{config_path}/app/ddnet_assets/cursor"
         else:
             self.file_path = f"{GlobalsVal.ddnet_folder}/assets/{self.list_type}"
@@ -162,8 +136,8 @@ class ResourceList(SingleDirectionScrollArea):
         self.containerWidget = QWidget()
         self.containerWidget.setStyleSheet("background: transparent;")
         self.fBoxLayout = FlowLayout(self.containerWidget)
-        self.setContentsMargins(11, 11, 11, 11)
 
+        self.setContentsMargins(11, 11, 11, 11)
         self.setWidgetResizable(True)
         self.enableTransparentBackground()
         self.setWidget(self.containerWidget)
@@ -192,8 +166,17 @@ class ResourceList(SingleDirectionScrollArea):
 
         QTimer.singleShot(0, self.load_next_batch)
 
-    def __data_ready(self, data):
-        self.teedata_list = data
+    def __data_ready(self, data=None):
+        if data is None:
+            self.teedata = JsonLoader(f"https://teedata.net/_next/data/{GlobalsVal.teedata_build_id}/{self.list_type}.json")
+            self.teedata.finished.connect(self.__data_ready)
+            self.teedata.start()
+            return
+
+        if self.list_type == 'skins':
+            self.teedata_list = data['pageProps']['skins']['items']
+        else:
+            self.teedata_list = data['pageProps']['assets']['items']
 
         QTimer.singleShot(0, self.load_next_batch)
         # print(data)
@@ -231,9 +214,9 @@ class ResourceDownloadInterface(QWidget):
         self.addButton(FluentIcon.SYNC, '刷新'),
 
         self.TeedataSkinsInterface = ResourceList('skins', self)
-        self.TeedataGameSkinsInterface = ResourceList('game', self)
+        self.TeedataGameSkinsInterface = ResourceList('gameskins', self)
         self.TeedataEmoticonsInterface = ResourceList('emoticons', self)
-        self.TeedataCursorsInterface = ResourceList('cursor', self)  # gui_cursor.png
+        self.TeedataCursorsInterface = ResourceList('cursors', self)  # gui_cursor.png
         self.TeedataParticlesInterface = ResourceList('particles', self)
         self.TeedataEntitiesInterface = ResourceList('entities', self)
 
@@ -257,18 +240,28 @@ class ResourceDownloadInterface(QWidget):
         self.pivot.setCurrentItem(self.TeedataSkinsInterface.objectName())
         self.pivot.currentItemChanged.connect(lambda k: self.stackedWidget.setCurrentWidget(self.findChild(QWidget, k)))
 
-        self.teedata_index = JsonLoader(f"{tee_data_url}/index.json")
-        self.teedata_index.finished.connect(self.__teedata_index_finished)
-        self.teedata_index.start()
+        self.teedata_build_id = HTMLoader("https://teedata.net/")
+        self.teedata_build_id.finished.connect(self.__teedata_build_id_finished)
 
-    def __teedata_index_finished(self, data):
-        data = data['pageProps']
-        self.TeedataSkinsInterface.data_ready.emit(data['skinTrending']['items'])
-        self.TeedataGameSkinsInterface.data_ready.emit(data['gameskinTrending']['items'])
-        self.TeedataEmoticonsInterface.data_ready.emit(data['emoticonTrending']['items'])
-        self.TeedataCursorsInterface.data_ready.emit(data['cursorTrending']['items'])
-        self.TeedataParticlesInterface.data_ready.emit(data['particleTrending']['items'])
-        self.TeedataEntitiesInterface.data_ready.emit(data['entityTrending']['items'])
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.teedata_build_id.start()
+
+
+    def __teedata_build_id_finished(self, data):
+        match = re.search(r'"buildId":"(.*?)"', data)
+
+        if match:
+            GlobalsVal.teedata_build_id = match.group(1)
+            self.__teedata_load_data()
+
+    def __teedata_load_data(self):
+        self.TeedataSkinsInterface.data_ready.emit()
+        self.TeedataGameSkinsInterface.data_ready.emit()
+        self.TeedataEmoticonsInterface.data_ready.emit()
+        self.TeedataCursorsInterface.data_ready.emit()
+        self.TeedataParticlesInterface.data_ready.emit()
+        self.TeedataEntitiesInterface.data_ready.emit()
 
     def addSubInterface(self, widget: QLabel, objectName, text):
         widget.setObjectName(objectName)

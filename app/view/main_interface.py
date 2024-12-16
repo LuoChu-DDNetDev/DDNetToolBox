@@ -2,17 +2,23 @@ import json
 import os
 import re
 
-from PyQt5.QtCore import pyqtSignal, QTimer, Qt
+from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import QWidget, QHBoxLayout
-
 from qfluentwidgets import Theme, qconfig, NavigationItemPosition, FluentWindow, SubtitleLabel, setFont, InfoBar, \
     InfoBarPosition
+from qfluentwidgets import FluentIcon as FIF
 
 from app.config import cfg, base_path, config_path
 from app.globals import GlobalsVal
-
-from qfluentwidgets import FluentIcon as FIF
+from app.utils.player_name import get_player_name
+from app.view.home_interface import HomeInterface
+from app.view.player_point_interface import PlayerPointInterface
+from app.view.cfg_interface import CFGInterface
+from app.view.resource_download_interface import ResourceDownloadInterface
+from app.view.resource_interface import ResourceInterface
+from app.view.server_list_interface import ServerListInterface
+from app.view.setting_interface import SettingInterface
 
 
 class DDNetFolderCrash(QWidget):
@@ -38,14 +44,15 @@ class MainWindow(FluentWindow):
         # 加载配置文件
         self.load_config_files()
 
-        # 延迟初始化子界面
-        self.homeInterface = None
-        self.PlayerPointInterface = None
-        self.CFGInterface = None
-        self.ResourceInterface = None
-        self.ServerListMirrorInterface = None
+        # 初始化子界面
+        self.homeInterface = HomeInterface()
+        self.PlayerPointInterface = PlayerPointInterface()
+        self.CFGInterface = CFGInterface()
+        self.ResourceInterface = ResourceInterface()
+        self.ResourceDownloadInterface = ResourceDownloadInterface()
+        self.ServerListMirrorInterface = ServerListInterface()
         self.ServerListPreviewInterface = None
-        self.settingInterface = None
+        self.settingInterface = SettingInterface(self.themeChane)
 
         self.initWindow()
         self.initNavigation()
@@ -54,7 +61,7 @@ class MainWindow(FluentWindow):
 
     def load_config_files(self):
         """加载配置文件"""
-        if all(elem in os.listdir(self.file_list) for elem in ['assets', 'ddnet-info.json', 'settings_ddnet.cfg']):
+        if all(elem in os.listdir(self.file_list) for elem in ['assets', 'settings_ddnet.cfg']):
             GlobalsVal.ddnet_folder_status = True
         else:
             InfoBar.warning(
@@ -73,16 +80,26 @@ class MainWindow(FluentWindow):
 
         json_file = os.path.join(self.file_list, "ddnet-info.json")
         if os.path.isfile(json_file):
-            with open(json_file, encoding='utf-8') as f:
-                GlobalsVal.ddnet_info = json.loads(f.read())
+            try:
+                with open(json_file, encoding='utf-8') as f:
+                    GlobalsVal.ddnet_info = json.loads(f.read())
+            except:
+                InfoBar.warning(
+                    title=self.tr('警告'),
+                    content=self.tr("没有在DDNet配置文件目录下找到ddnet-info.json文件，游戏版本更新检测将无法工作"),
+                    orient=Qt.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.BOTTOM_RIGHT,
+                    duration=-1,
+                    parent=GlobalsVal.main_window
+                )
 
         server_list_file = os.path.join(self.file_list, "ddnet-serverlist-urls.cfg")
         GlobalsVal.server_list_file = os.path.isfile(server_list_file)
 
         if not os.path.isfile(f"{config_path}/app/config/config.json"):
-            if "player_name" in GlobalsVal.ddnet_setting_config:
-                if GlobalsVal.ddnet_setting_config["player_name"] == "Realyn//UnU":
-                    cfg.set(cfg.themeColor, QColor("#af251a"))
+            if get_player_name() == "Realyn//UnU":
+                cfg.set(cfg.themeColor, QColor("#af251a"))
 
     def load_settings_ddnet_cfg(self, file_path):
         """加载并解析 settings_ddnet.cfg 文件"""
@@ -120,51 +137,15 @@ class MainWindow(FluentWindow):
 
     def initNavigation(self):
         """初始化子页面"""
-        self.addSubInterface(self.get_home_interface(), FIF.HOME, self.tr('首页'))
-        self.addSubInterface(self.get_player_point_interface(), FIF.SEARCH, self.tr('玩家分数查询'))
-        self.addSubInterface(self.get_CFG_interface(), FIF.APPLICATION, self.tr('CFG管理'))
-        self.addSubInterface(self.get_resource_interface(), FIF.EMOJI_TAB_SYMBOLS, self.tr('材质管理'))
-        self.addSubInterface(self.get_server_list_mirror_interface(), FIF.LIBRARY, self.tr('服务器列表管理'))
+        self.addSubInterface(self.homeInterface, FIF.HOME, self.tr('首页'))
+        self.addSubInterface(self.PlayerPointInterface, FIF.SEARCH, self.tr('玩家分数查询'))
+        self.addSubInterface(self.CFGInterface, FIF.APPLICATION, self.tr('CFG管理'))
+        self.addSubInterface(self.ResourceInterface, FIF.EMOJI_TAB_SYMBOLS, self.tr('材质管理'))
+        self.addSubInterface(self.ServerListMirrorInterface, FIF.LIBRARY, self.tr('服务器列表管理'))
         # self.addSubInterface(self.ServerListPreviewInterface, FIF.LIBRARY, self.tr('服务器列表预览'))
         # self.addSubInterface(self.ResourceDownloadInterface, FIF.DOWNLOAD, self.tr('材质下载'))
 
-        self.addSubInterface(self.get_setting_interface(), FIF.SETTING, self.tr('设置'), NavigationItemPosition.BOTTOM)
-
-    def get_home_interface(self):
-        if self.homeInterface is None:
-            from app.view.home_interface import HomeInterface
-            self.homeInterface = HomeInterface()
-        return self.homeInterface
-
-    def get_player_point_interface(self):
-        if self.PlayerPointInterface is None:
-            from app.view.player_point_interface import PlayerPointInterface
-            self.PlayerPointInterface = PlayerPointInterface()
-        return self.PlayerPointInterface
-
-    def get_CFG_interface(self):
-        if self.CFGInterface is None:
-            from app.view.cfg_interface import CFGInterface
-            self.CFGInterface = CFGInterface()
-        return self.CFGInterface
-
-    def get_resource_interface(self):
-        if self.ResourceInterface is None:
-            from app.view.resource_interface import ResourceInterface
-            self.ResourceInterface = ResourceInterface()
-        return self.ResourceInterface
-
-    def get_server_list_mirror_interface(self):
-        if self.ServerListMirrorInterface is None:
-            from app.view.server_list_interface import ServerListInterface
-            self.ServerListMirrorInterface = ServerListInterface()
-        return self.ServerListMirrorInterface
-
-    def get_setting_interface(self):
-        if self.settingInterface is None:
-            from app.view.setting_interface import SettingInterface
-            self.settingInterface = SettingInterface(self.themeChane)
-        return self.settingInterface
+        self.addSubInterface(self.settingInterface, FIF.SETTING, self.tr('设置'), NavigationItemPosition.BOTTOM)
 
     def initWindow(self):
         self.resize(820, 600)
